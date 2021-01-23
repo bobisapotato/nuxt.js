@@ -24,6 +24,9 @@ describe('basic generate', () => {
       generate: {
         static: false,
         dir: '.nuxt-generate'
+      },
+      publicRuntimeConfig: {
+        generated: true
       }
     })
     const nuxt = new Nuxt(config)
@@ -130,7 +133,7 @@ describe('basic generate', () => {
     const window = await generator.nuxt.server.renderAndGetWindow(url('/head'))
     const html = window.document.body.innerHTML
     const metas = window.document.getElementsByTagName('meta')
-    expect(window.document.title).toBe('My title - Nuxt.js')
+    expect(window.document.title).toBe('My title - Nuxt')
     expect(metas[0].getAttribute('data-n-head')).toBe('ssr')
     expect(metas[1].getAttribute('content')).toBe('my meta')
     expect(html).toContain('<div><h1>I can haz meta tags</h1></div>')
@@ -139,7 +142,14 @@ describe('basic generate', () => {
   test('/async-data', async () => {
     const window = await generator.nuxt.server.renderAndGetWindow(url('/async-data'))
     const html = window.document.body.innerHTML
-    expect(html).toContain('<p>Nuxt.js</p>')
+    expect(html).toContain('<p>Nuxt</p>')
+  })
+
+  test('/fetch', async () => {
+    const window = await generator.nuxt.server.renderAndGetWindow(url('/fetch'))
+    const html = window.document.body.innerHTML
+    expect(html).toContain('<code>true</code>')
+    expect(window.__NUXT__.fetch.custom100.fetched).toBe(true)
   })
 
   test('/тест雨 (test non ascii route)', async () => {

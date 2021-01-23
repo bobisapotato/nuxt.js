@@ -22,7 +22,7 @@ jobs:
         node: [10, 12]
 
     steps:
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
 
@@ -36,18 +36,25 @@ jobs:
 
       - name: cache node_modules
         id: node_modules_cache_id
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: node_modules
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-deps-${{ hashFiles(format('{0}{1}', github.workspace, '/yarn.lock')) }}
 
       - name: install
         run: yarn --check-files --frozen-lockfile --non-interactive
 
       - name: cache workspace
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
+            packages/*/dist
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-nuxt-${{ github.sha }}
 
   lint:
@@ -59,7 +66,7 @@ jobs:
         node: [12]
 
     steps:
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
 
@@ -67,9 +74,13 @@ jobs:
         uses: actions/checkout@master
 
       - name: restore workspace cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
+            packages/*/dist
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-nuxt-${{ github.sha }}
 
       - name: lint
@@ -88,7 +99,7 @@ jobs:
         node: [12]
 
     steps:
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
 
@@ -96,9 +107,13 @@ jobs:
         uses: actions/checkout@master
 
       - name: restore workspace cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
+            packages/*/dist
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-nuxt-${{ github.sha }}
 
       - name: audit
@@ -115,7 +130,7 @@ jobs:
         node: [10, 12]
 
     steps:
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
 
@@ -123,9 +138,13 @@ jobs:
         uses: actions/checkout@master
 
       - name: restore workspace cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
+            packages/*/dist
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-nuxt-${{ github.sha }}
 
       - name: test unit
@@ -152,7 +171,7 @@ jobs:
       NODE_OPTIONS: "--max_old_space_size=4096"
 
     steps:
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
 
@@ -160,16 +179,20 @@ jobs:
         uses: actions/checkout@master
 
       - name: restore workspace cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
+            packages/*/dist
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-nuxt-${{ github.sha }}
 
       - name: build
         run: yarn test:fixtures -i
 
       - name: cache fixtures
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: test/fixtures
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-fixtures-${{ github.sha }}
@@ -184,7 +207,7 @@ jobs:
         node: [12]
 
     steps:
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
 
@@ -192,13 +215,17 @@ jobs:
         uses: actions/checkout@master
 
       - name: restore workspace cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
+            packages/*/dist
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-nuxt-${{ github.sha }}
 
       - name: restore fixtures
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: test/fixtures
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-fixtures-${{ github.sha }}
@@ -217,7 +244,7 @@ jobs:
         node: [10, 12]
 
     steps:
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
 
@@ -225,13 +252,17 @@ jobs:
         uses: actions/checkout@master
 
       - name: restore workspace cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
+            packages/*/dist
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-nuxt-${{ github.sha }}
 
       - name: restore fixtures
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: test/fixtures
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-fixtures-${{ github.sha }}
@@ -250,7 +281,7 @@ jobs:
         node: [10, 12]
 
     steps:
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
 
@@ -258,13 +289,17 @@ jobs:
         uses: actions/checkout@master
 
       - name: restore workspace cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
+            packages/*/dist
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-nuxt-${{ github.sha }}
 
       - name: restore fixtures
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: test/fixtures
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-fixtures-${{ github.sha }}
@@ -282,19 +317,32 @@ jobs:
         node: [12]
 
     steps:
-      - name: restore workspace cache
-        uses: actions/cache@v1
+      - name: checkout
+        uses: actions/checkout@master
         with:
-          path: ${{ github.workspace }}
+          ref: 'refs/heads/dev'
+          fetch-depth: 0 # All history
+
+      - name: fetch tags
+        run: git fetch --depth=1 origin "+refs/tags/*:refs/tags/*"
+
+      - name: restore workspace cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+            distributions/*/node_modules
+            packages/*/dist
           key: ${{ matrix.os }}-node-v${{ matrix.node }}-nuxt-${{ github.sha }}
 
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
           registry-url: 'https://registry.npmjs.org'
 
       - name: bump version
-        run: yarn lerna version --yes --no-git-tag-version --no-push
+        run: yarn lerna version --yes --no-changelog --no-git-tag-version --no-push --force-publish "*" --loglevel verbose
 
       - name: build
         run: PACKAGE_SUFFIX=edge yarn build

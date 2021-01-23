@@ -1,6 +1,6 @@
 {
   "name": "@nuxt/config",
-  "version": "2.14.5",
+  "version": "2.14.12",
   "repository": "nuxt/nuxt.js",
   "license": "MIT",
   "main": "dist/config.js",
@@ -10,16 +10,15 @@
     "index.d.ts"
   ],
   "dependencies": {
-    "@nuxt/utils": "2.14.5",
+    "@nuxt/utils": "2.14.12",
     "consola": "^2.15.0",
-    "create-require": "^1.0.2",
-    "defu": "^2.0.4",
-    "destr": "^1.0.0",
+    "defu": "^3.2.2",
+    "destr": "^1.1.0",
     "dotenv": "^8.2.0",
-    "esm": "^3.2.25",
-    "jiti": "^0.1.11",
-    "rc9": "^1.0.0",
-    "std-env": "^2.2.1"
+    "lodash": "^4.17.20",
+    "rc9": "^1.2.0",
+    "std-env": "^2.2.1",
+    "ufo": "^0.5.4"
   },
   "publishConfig": {
     "access": "public"

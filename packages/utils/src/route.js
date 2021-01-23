@@ -1,7 +1,7 @@
 import path from 'path'
-import get from 'lodash/get'
+import { get } from 'lodash'
 import consola from 'consola'
-
+import { normalizeURL, withTrailingSlash, withoutTrailingSlash } from 'ufo'
 import { r } from './resolve'
 
 const routeChildren = function (route) {
@@ -41,6 +41,7 @@ export const flatRoutes = function flatRoutes (router, fileName = '', routes = [
   return routes
 }
 
+// eslint-disable-next-line default-param-last
 function cleanChildrenRoutes (routes, isChild = false, routeNameSplitter = '-', trailingSlash, parentRouteName) {
   const regExpIndex = new RegExp(`${routeNameSplitter}index$`)
   const regExpParentRouteName = new RegExp(`^${parentRouteName}${routeNameSplitter}`)
@@ -79,13 +80,16 @@ function cleanChildrenRoutes (routes, isChild = false, routeNameSplitter = '-', 
     }
     route.name = route.name.replace(regExpIndex, '')
     if (route.children) {
-      const indexRoutePath = trailingSlash === false ? '/' : ''
-      const defaultChildRoute = route.children.find(child => child.path === indexRoutePath)
+      const defaultChildRoute = route.children.find(child => child.path === '/' || child.path === '')
       const routeName = route.name
       if (defaultChildRoute) {
-        if (trailingSlash === false) {
-          defaultChildRoute.name = route.name
-        }
+        route.children.forEach((child) => {
+          if (child.path !== defaultChildRoute.path) {
+            const parts = child.path.split('/')
+            parts[1] = parts[1].endsWith('?') ? parts[1].substr(0, parts[1].length - 1) : parts[1]
+            child.path = parts.join('/')
+          }
+        })
         delete route.name
       }
       route.children = cleanChildrenRoutes(route.children, true, routeNameSplitter, trailingSlash, routeName)
@@ -129,17 +133,21 @@ export const sortRoutes = function sortRoutes (routes) {
       // If a.length >= b.length
       if (i === _b.length - 1 && res === 0) {
         // unless * found sort by level, then alphabetically
-        res = _a[i] === '*' ? -1 : (
-          _a.length === _b.length ? a.path.localeCompare(b.path) : (_a.length - _b.length)
-        )
+        res = _a[i] === '*'
+          ? -1
+          : (
+            _a.length === _b.length ? a.path.localeCompare(b.path) : (_a.length - _b.length)
+          )
       }
     }
 
     if (res === 0) {
       // unless * found sort by level, then alphabetically
-      res = _a[i - 1] === '*' && _b[i] ? 1 : (
-        _a.length === _b.length ? a.path.localeCompare(b.path) : (_a.length - _b.length)
-      )
+      res = _a[i - 1] === '*' && _b[i]
+        ? 1
+        : (
+          _a.length === _b.length ? a.path.localeCompare(b.path) : (_a.length - _b.length)
+        )
     }
     return res
   })
@@ -189,8 +197,7 @@ export const createRoutes = function createRoutes ({
       } else if (key === 'index' && i + 1 === keys.length) {
         route.path += i > 0 ? '' : '/'
       } else {
-        route.path += '/' + getRoutePathExtension(key)
-
+        route.path += '/' + normalizeURL(getRoutePathExtension(key))
         if (key.startsWith('_') && key.length > 1) {
           route.path += '?'
         }
@@ -198,7 +205,11 @@ export const createRoutes = function createRoutes ({
     })
     if (trailingSlash !== undefined) {
       route.pathToRegexpOptions = { ...route.pathToRegexpOptions, strict: true }
-      route.path = route.path.replace(/\/+$/, '') + (trailingSlash ? '/' : '') || '/'
+      if (trailingSlash && !route.path.endsWith('*')) {
+        route.path = withTrailingSlash(route.path)
+      } else {
+        route.path = withoutTrailingSlash(route.path) || '/'
+      }
     }
 
     parent.push(route)

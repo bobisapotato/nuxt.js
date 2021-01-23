@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import Router from 'vue-router'
+import { normalizeURL, decode } from 'ufo'
 import { interopDefault } from './utils'<%= isTest ? '// eslint-disable-line no-unused-vars' : '' %>
 import scrollBehavior from './router.scrollBehavior.js'
 
@@ -82,18 +83,13 @@ const _routes = recursiveRoutes(router.routes, '  ', _components, 1)
   }
 }).join('\n')%>
 
-// TODO: remove in Nuxt 3
 const emptyFn = () => {}
-const originalPush = Router.prototype.push
-Router.prototype.push = function push (location, onComplete = emptyFn, onAbort) {
-  return originalPush.call(this, location, onComplete, onAbort)
-}
 
 Vue.use(Router)
 
 export const routerOptions = {
   mode: '<%= router.mode %>',
-  base: decodeURI('<%= router.base %>'),
+  base: '<%= router.base %>',
   linkActiveClass: '<%= router.linkActiveClass %>',
   linkExactActiveClass: '<%= router.linkExactActiveClass %>',
   scrollBehavior,
@@ -105,6 +101,35 @@ export const routerOptions = {
   fallback: <%= router.fallback %>
 }
 
-export function createRouter () {
-  return new Router(routerOptions)
+function decodeObj(obj) {
+  for (const key in obj) {
+    if (typeof obj[key] === 'string') {
+      obj[key] = decode(obj[key])
+    }
+  }
+}
+
+export function createRouter (ssrContext, config) {
+  const base = (config.app && config.app.basePath) || routerOptions.base
+  const router = new Router({ ...routerOptions, base  })
+
+  // TODO: remove in Nuxt 3
+  const originalPush = router.push
+  router.push = function push (location, onComplete = emptyFn, onAbort) {
+    return originalPush.call(this, location, onComplete, onAbort)
+  }
+
+  const resolve = router.resolve.bind(router)
+  router.resolve = (to, current, append) => {
+    if (typeof to === 'string') {
+      to = normalizeURL(to)
+    }
+    const r = resolve(to, current, append)
+    if (r && r.resolved && r.resolved.query) {
+      decodeObj(r.resolved.query)
+    }
+    return r
+  }
+
+  return router
 }

@@ -19,6 +19,11 @@ Object {
     "~": "/var/nuxt/test",
     "~~": "/var/nuxt/test",
   },
+  "app": Object {
+    "assetsPath": "/_nuxt/",
+    "basePath": "/",
+    "cdnURL": null,
+  },
   "appTemplatePath": "/var/nuxt/test/.nuxt/views/app.template.html",
   "build": Object {
     "_publicPath": "/_nuxt/",
@@ -33,7 +38,9 @@ Object {
     "cache": false,
     "corejs": "auto",
     "cssSourceMap": false,
-    "devMiddleware": Object {},
+    "devMiddleware": Object {
+      "stats": "none",
+    },
     "extractCSS": false,
     "filenames": Object {
       "app": [Function],
@@ -63,19 +70,25 @@ Object {
     "indicator": false,
     "loaders": Object {
       "css": Object {
+        "esModule": false,
         "sourceMap": false,
       },
       "cssModules": Object {
+        "esModule": false,
         "modules": Object {
           "localIdentName": "[local]_[hash:base64:5]",
         },
         "sourceMap": false,
       },
-      "file": Object {},
+      "file": Object {
+        "esModule": false,
+      },
       "fontUrl": Object {
+        "esModule": false,
         "limit": 1000,
       },
       "imgUrl": Object {
+        "esModule": false,
         "limit": 1000,
       },
       "less": Object {
@@ -205,6 +218,7 @@ Object {
     "exclude": Array [],
     "fallback": "200.html",
     "interval": 0,
+    "manifest": true,
     "routes": Array [],
     "staticAssets": Object {
       "base": "/_nuxt/static",
@@ -266,7 +280,7 @@ Object {
     "client_error_details": "An error occurred while rendering the page. Check developer tools console for details.",
     "error_404": "This page could not be found",
     "loading": "Loading...",
-    "nuxtjs": "Nuxt.js",
+    "nuxtjs": "Nuxt",
     "server_error": "Server error",
     "server_error_details": "An error occurred in the application and your page could not be served. If you are the application owner, check your logs for details.",
   },
@@ -305,7 +319,13 @@ Object {
   },
   "plugins": Array [],
   "privateRuntimeConfig": Object {},
-  "publicRuntimeConfig": Object {},
+  "publicRuntimeConfig": Object {
+    "app": Object {
+      "assetsPath": "/_nuxt/",
+      "basePath": "/",
+      "cdnURL": null,
+    },
+  },
   "render": Object {
     "bundleRenderer": Object {
       "runInNewContext": false,

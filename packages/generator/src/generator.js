@@ -1,12 +1,13 @@
 import path from 'path'
 import chalk from 'chalk'
 import consola from 'consola'
+import devalue from 'devalue'
 import fsExtra from 'fs-extra'
 import defu from 'defu'
 import htmlMinifier from 'html-minifier'
 import { parse } from 'node-html-parser'
 
-import { isFullStatic, flatRoutes, isString, isUrl, promisifyRoute, waitFor } from '@nuxt/utils'
+import { isFullStatic, flatRoutes, isString, isUrl, promisifyRoute, urlJoin, waitFor, requireModule } from '@nuxt/utils'
 
 export default class Generator {
   constructor (nuxt, builder) {
@@ -16,6 +17,9 @@ export default class Generator {
 
     // Set variables
     this.isFullStatic = isFullStatic(this.options)
+    if (this.isFullStatic) {
+      consola.info(`Full static generation activated`)
+    }
     this.staticRoutes = path.resolve(this.options.srcDir, this.options.dir.static)
     this.srcBuiltPath = path.resolve(this.options.buildDir, 'dist', 'client')
     this.distPath = this.options.generate.dir
@@ -25,9 +29,14 @@ export default class Generator {
     )
     // Payloads for full static
     if (this.isFullStatic) {
-      const { staticAssets } = this.options.generate
+      const { staticAssets, manifest } = this.options.generate
       this.staticAssetsDir = path.resolve(this.distNuxtPath, staticAssets.dir, staticAssets.version)
-      this.staticAssetsBase = this.options.generate.staticAssets.versionBase
+      this.staticAssetsBase = urlJoin(this.options.app.cdnURL || '/', this.options.generate.staticAssets.versionBase)
+      if (manifest) {
+        this.manifest = defu(manifest, {
+          routes: []
+        })
+      }
     }
 
     // Shared payload
@@ -48,6 +57,15 @@ export default class Generator {
     const errors = await this.generateRoutes(routes)
 
     await this.afterGenerate()
+
+    // Save routes manifest for full static
+    if (this.manifest) {
+      await this.nuxt.callHook('generate:manifest', this.manifest, this)
+      const manifestPath = path.join(this.staticAssetsDir, 'manifest.js')
+      await fsExtra.ensureDir(this.staticAssetsDir)
+      await fsExtra.writeFile(manifestPath, `__NUXT_JSONP__("manifest.js", ${devalue(this.manifest)})`, 'utf-8')
+      consola.success('Static manifest generated')
+    }
 
     // Done hook
     await this.nuxt.callHook('generate:done', this, errors)
@@ -104,7 +122,13 @@ export default class Generator {
     if (this.options.router.mode === 'hash') {
       routes = ['/']
     } else {
-      routes = flatRoutes(this.getAppRoutes())
+      try {
+        routes = flatRoutes(this.getAppRoutes())
+      } catch (err) {
+        // Case: where we use custom router.js
+        // https://github.com/nuxt-community/router-module/issues/83
+        routes = ['/']
+      }
     }
     routes = routes.filter(route => this.shouldGenerateRoute(route))
     routes = this.decorateWithPayloads(routes, generateRoutes)
@@ -127,14 +151,14 @@ export default class Generator {
 
   getBuildConfig () {
     try {
-      return require(path.join(this.options.buildDir, 'nuxt/config.json'))
+      return requireModule(path.join(this.options.buildDir, 'nuxt/config.json'))
     } catch (err) {
       return null
     }
   }
 
   getAppRoutes () {
-    return require(path.join(this.options.buildDir, 'routes.json'))
+    return requireModule(path.join(this.options.buildDir, 'routes.json'))
   }
 
   async generateRoutes (routes) {
@@ -243,7 +267,7 @@ export default class Generator {
     // Add .nojekyll file to let GitHub Pages add the _nuxt/ folder
     // https://help.github.com/articles/files-that-start-with-an-underscore-are-missing/
     const nojekyllPath = path.resolve(this.distPath, '.nojekyll')
-    fsExtra.writeFile(nojekyllPath, '')
+    await fsExtra.writeFile(nojekyllPath, '')
 
     await this.nuxt.callHook('generate:distCopied', this)
     await this.nuxt.callHook('export:distCopied', this)
@@ -270,6 +294,10 @@ export default class Generator {
   async generateRoute ({ route, payload = {}, errors = [] }) {
     let html
     const pageErrors = []
+
+    if (this.options.router && this.options.router.trailingSlash && route[route.length - 1] !== '/') {
+      route = route + '/'
+    }
 
     const setPayload = (_payload) => {
       payload = defu(_payload, payload)
@@ -302,12 +330,13 @@ export default class Generator {
             .replace(/\/+$/, '')
             .trim()
 
-          const route = decodeURI(sanitizedHref + possibleTrailingSlash)
+          const foundRoute = decodeURI(sanitizedHref + possibleTrailingSlash)
 
-          if (route.startsWith('/') && !route.startsWith('//') && !path.extname(route) && this.shouldGenerateRoute(route) && !this.generatedRoutes.has(route)) {
-            this.generatedRoutes.add(route)
-            this.routes.push({ route })
+          if (foundRoute.startsWith('/') && !foundRoute.startsWith('//') && !path.extname(foundRoute) && this.shouldGenerateRoute(foundRoute) && !this.generatedRoutes.has(foundRoute)) {
+            this.generatedRoutes.add(foundRoute)
+            this.routes.push({ route: foundRoute })
           }
+          return null
         })
       }
 
@@ -318,8 +347,13 @@ export default class Generator {
           await fsExtra.ensureDir(path.dirname(assetPath))
           await fsExtra.writeFile(assetPath, asset.src, 'utf-8')
         }
+        // Add route to manifest (only if no error and redirect)
+        if (this.manifest && (!res.error && !res.redirected)) {
+          this.manifest.routes.push(route)
+        }
       }
 
+      // SPA fallback
       if (res.error) {
         pageErrors.push({ type: 'handled', route, error: res.error })
       }
@@ -346,8 +380,9 @@ export default class Generator {
     let fileName
 
     if (this.options.generate.subFolders) {
-      fileName = path.join(route, path.sep, 'index.html') // /about -> /about/index.html
-      fileName = fileName === '/404/index.html' ? '/404.html' : fileName // /404 -> /404.html
+      fileName = route === '/404'
+        ? path.join(path.sep, '404.html') // /404 -> /404.html
+        : path.join(route, path.sep, 'index.html') // /about -> /about/index.html
     } else {
       const normalizedRoute = route.replace(/\/$/, '')
       fileName = route.length > 1 ? path.join(path.sep, normalizedRoute + '.html') : path.join(path.sep, 'index.html')

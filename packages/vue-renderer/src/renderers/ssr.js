@@ -4,6 +4,7 @@ import { format } from 'util'
 import fs from 'fs-extra'
 import consola from 'consola'
 import { TARGETS, urlJoin } from '@nuxt/utils'
+import { parsePath, withoutTrailingSlash } from 'ufo'
 import devalue from '@nuxt/devalue'
 import { createBundleRenderer } from 'vue-server-renderer'
 import BaseRenderer from './base'
@@ -42,7 +43,11 @@ export default class SSRRenderer extends BaseRenderer {
   }
 
   renderScripts (renderContext) {
-    return this.addAttrs(renderContext.renderScripts(), 'script')
+    let renderedScripts = this.addAttrs(renderContext.renderScripts(), 'script')
+    if (this.options.render.asyncScripts) {
+      renderedScripts = renderedScripts.replace(/defer>/g, 'defer async>')
+    }
+    return renderedScripts
   }
 
   renderStyles (renderContext) {
@@ -175,7 +180,6 @@ export default class SSRRenderer extends BaseRenderer {
     if (renderContext.staticAssetsBase) {
       const preloadScripts = []
       renderContext.staticAssets = []
-      const routerBase = this.options.router.base
       const { staticAssetsBase, url, nuxt, staticAssets } = renderContext
       const { data, fetch, mutations, ...state } = nuxt
 
@@ -189,21 +193,36 @@ export default class SSRRenderer extends BaseRenderer {
       const stateScriptKb = (stateScript.length * 4 /* utf8 */) / 100
       if (stateScriptKb > 10) {
         const statePath = urlJoin(url, 'state.js')
-        const stateUrl = urlJoin(routerBase, staticAssetsBase, statePath)
+        const stateUrl = urlJoin(staticAssetsBase, statePath)
         staticAssets.push({ path: statePath, src: stateScript })
-        APP += `<script defer src="${stateUrl}"></script>`
+        if (this.options.render.asyncScripts) {
+          APP += `<script defer async src="${stateUrl}"></script>`
+        } else {
+          APP += `<script defer src="${stateUrl}"></script>`
+        }
         preloadScripts.push(stateUrl)
       } else {
         APP += `<script>${stateScript}</script>`
       }
 
-      // Page level payload.js (async loaded for CSR)
-      const payloadPath = urlJoin(url, 'payload.js')
-      const payloadUrl = urlJoin(routerBase, staticAssetsBase, payloadPath)
-      const routePath = (url.replace(/\/+$/, '') || '/').split('?')[0] // remove trailing slah and query params
-      const payloadScript = `__NUXT_JSONP__("${routePath}", ${devalue({ data, fetch, mutations })});`
-      staticAssets.push({ path: payloadPath, src: payloadScript })
-      preloadScripts.push(payloadUrl)
+      // Save payload only if no error or redirection were made
+      if (!renderContext.nuxt.error && !renderContext.redirected) {
+        // Page level payload.js (async loaded for CSR)
+        const payloadPath = urlJoin(url, 'payload.js')
+        const payloadUrl = urlJoin(staticAssetsBase, payloadPath)
+        let routePath = parsePath(url).pathname // remove query params
+        if (!this.options.router.trailingSlash) {
+          routePath = withoutTrailingSlash(routePath) || '/'
+        }
+        const payloadScript = `__NUXT_JSONP__("${routePath}", ${devalue({ data, fetch, mutations })});`
+        staticAssets.push({ path: payloadPath, src: payloadScript })
+        preloadScripts.push(payloadUrl)
+        // Add manifest preload
+        if (this.options.generate.manifest) {
+          const manifestUrl = urlJoin(staticAssetsBase, 'manifest.js')
+          preloadScripts.push(manifestUrl)
+        }
+      }
 
       // Preload links
       for (const href of preloadScripts) {

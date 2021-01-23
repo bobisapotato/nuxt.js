@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import { normalizeURL } from 'ufo'
 
 // window.{{globals.loadedCallback}} hook
 // Useful for jsdom testing or plugins (https://github.com/tmpvar/jsdom#dealing-with-asynchronous-script-loading)
@@ -6,6 +7,15 @@ if (process.client) {
   window.<%= globals.readyCallback %>Cbs = []
   window.<%= globals.readyCallback %> = (cb) => {
     window.<%= globals.readyCallback %>Cbs.push(cb)
+  }
+}
+
+export function createGetCounter (counterObject, defaultKey = '') {
+  return function getCounter (id = defaultKey) {
+    if (counterObject[id] === undefined) {
+      counterObject[id] = 0
+    }
+    return counterObject[id]++
   }
 }
 
@@ -24,6 +34,24 @@ export function interopDefault (promise) {
 <% if (features.fetch) { %>
 export function hasFetch(vm) {
   return vm.$options && typeof vm.$options.fetch === 'function' && !vm.$options.fetch.length
+}
+export function purifyData(data) {
+  if (process.env.NODE_ENV === 'production') {
+    return data
+  }
+
+  return Object.entries(data).filter(
+    ([key, value]) => {
+      const valid = !(value instanceof Function) && !(value instanceof Promise)
+      if (!valid) {
+        console.warn(`${key} is not able to be stringified. This will break in a production environment.`)
+      }
+      return valid
+    }
+    ).reduce((obj, [key, value]) => {
+      obj[key] = value
+      return obj
+    }, {})
 }
 export function getChildrenComponentInstancesUsingFetch(vm, instances = []) {
   const children = vm.$children || []
@@ -152,16 +180,18 @@ export async function setContext (app, context) {
       <%= (store ? 'store: app.store,' : '') %>
       payload: context.payload,
       error: context.error,
-      base: '<%= router.base %>',
+      base: app.router.options.base,
       env: <%= JSON.stringify(env) %><%= isTest ? '// eslint-disable-line' : '' %>
     }
     // Only set once
-    if (!process.static && context.req) {
+    <% if (!isFullStatic) { %>
+    if (context.req) {
       app.context.req = context.req
     }
-    if (!process.static && context.res) {
+    if (context.res) {
       app.context.res = context.res
     }
+    <% } %>
     if (context.ssrContext) {
       app.context.ssrContext = context.ssrContext
     }
@@ -278,15 +308,20 @@ export function promisify (fn, context) {
 
 // Imported from vue-router
 export function getLocation (base, mode) {
-  let path = decodeURI(window.location.pathname)
   if (mode === 'hash') {
     return window.location.hash.replace(/^#\//, '')
   }
-  // To get matched with sanitized router.base add trailing slash
-  if (base && (path.endsWith('/') ? path : path + '/').startsWith(base)) {
+
+  base = decodeURI(base).slice(0, -1) // consideration is base is normalized with trailing slash
+  let path = decodeURI(window.location.pathname)
+
+  if (base && path.startsWith(base)) {
     path = path.slice(base.length)
   }
-  return (path || '/') + window.location.search + window.location.hash
+
+  const fullPath = (path || '/') + window.location.search + window.location.hash
+
+  return normalizeURL(fullPath)
 }
 
 // Imported from path-to-regexp
@@ -663,3 +698,10 @@ export function stripTrailingSlash (path) {
 export function isSamePath (p1, p2) {
   return stripTrailingSlash(p1) === stripTrailingSlash(p2)
 }
+
+export function setScrollRestoration (newVal) {
+  try {
+    window.history.scrollRestoration = newVal;
+  } catch(e) {}
+}
+
