@@ -21,7 +21,9 @@ import {
 import { createApp<% if (features.layouts) { %>, NuxtError<% } %> } from './index.js'
 <% if (features.fetch) { %>import fetchMixin from './mixins/fetch.client'<% } %>
 import NuxtLink from './components/nuxt-link.<%= features.clientPrefetch ? "client" : "server" %>.js' // should be included after ./index.js
-<% if (isFullStatic) { %>import './jsonp'<% } %>
+<% if (isFullStatic) { %>import { installJsonp } from './jsonp'<% } %>
+
+<% if (isFullStatic) { %>installJsonp()<% } %>
 
 <% if (features.fetch) { %>
 // Fetch mixin
@@ -48,7 +50,7 @@ const NUXT = window.<%= globals.context %> || {}
 
 const $config = NUXT.config || {}
 if ($config.app) {
-  __webpack_public_path__ = urlJoin($config.app.cdnURL || '/', $config.app.assetsPath)
+  __webpack_public_path__ = urlJoin($config.app.cdnURL, $config.app.assetsPath)
 }
 
 Object.assign(Vue.config, <%= serialize(vue.config) %>)<%= isTest ? '// eslint-disable-line' : '' %>
